@@ -1854,7 +1854,10 @@ static void clone_outer_loop_helper(Node* n, const IdealLoopTree *loop, const Id
       Node* c = phase->get_ctrl(u);
       IdealLoopTree* u_loop = phase->get_loop(c);
       assert(!loop->is_member(u_loop), "can be in outer loop or out of both loops only");
-      if (outer_loop->is_member(u_loop)) {
+      if (outer_loop->is_member(u_loop) ||
+          // nodes pinned with control in the outer loop but not referenced from the safepoint must be moved out of
+          // the outer loop too
+          (u->in(0) != NULL && outer_loop->is_member(phase->get_loop(u->in(0))))) {
         wq.push(u);
       }
     }
@@ -1974,11 +1977,20 @@ void PhaseIdealLoop::clone_outer_loop(LoopNode* head, CloneLoopMode mode, IdealL
       Node* old = extra_data_nodes.at(i);
       clone_outer_loop_helper(old, loop, outer_loop, old_new, wq, this, true);
     }
+
+    Node* inner_out = sfpt->in(0);
+    if (inner_out->outcnt() > 1) {
+      clone_outer_loop_helper(inner_out, loop, outer_loop, old_new, wq, this, true);
+    }
+
     Node* new_ctrl = cl->outer_loop_exit();
     assert(get_loop(new_ctrl) != outer_loop, "must be out of the loop nest");
     for (uint i = 0; i < wq.size(); i++) {
       Node* n = wq.at(i);
       set_ctrl(n, new_ctrl);
+      if (n->in(0) != NULL) {
+        _igvn.replace_input_of(n, 0, new_ctrl);
+      }
       clone_outer_loop_helper(n, loop, outer_loop, old_new, wq, this, false);
     }
   } else {
