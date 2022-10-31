@@ -25,13 +25,11 @@
  * @test
  * @bug  8222091
  * @summary  Javadoc does not handle package annotations correctly on package-info.java
- * @library  ../../lib/
+ * @library  ../lib/
  * @modules jdk.javadoc/jdk.javadoc.internal.tool
- * @build   javadoc.tester.*
+ * @build   JavadocTester
  * @run main TestPackageAnnotation
  */
-
-import javadoc.tester.JavadocTester;
 
 public class TestPackageAnnotation extends JavadocTester {
 
